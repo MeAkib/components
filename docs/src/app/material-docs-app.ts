@@ -6,16 +6,16 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, OnDestroy, ViewEncapsulation, inject} from '@angular/core';
+import {Component, ViewEncapsulation, inject} from '@angular/core';
 
 import {AnalyticsService} from './shared/analytics/analytics';
 import {NavigationFocusService} from './shared/navigation-focus/navigation-focus.service';
-import {Subscription} from 'rxjs';
 import {filter, map, pairwise, startWith} from 'rxjs/operators';
 import {NavigationEnd, Router, RouterOutlet} from '@angular/router';
 import {NavBar} from './shared/navbar/navbar';
 import {CookiePopup} from './shared/cookie-popup/cookie-popup';
 import {HeaderTagManager} from './shared/header-tag-manager';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'material-docs-app',
@@ -28,8 +28,7 @@ import {HeaderTagManager} from './shared/header-tag-manager';
   encapsulation: ViewEncapsulation.None,
   imports: [NavBar, RouterOutlet, CookiePopup],
 })
-export class MaterialDocsApp implements OnDestroy {
-  private _subscriptions = new Subscription();
+export class MaterialDocsApp {
   private _headerTagManager = inject(HeaderTagManager);
 
   constructor() {
@@ -37,22 +36,21 @@ export class MaterialDocsApp implements OnDestroy {
     const navigationFocusService = inject(NavigationFocusService);
     const router = inject(Router);
 
-    this._subscriptions.add(
-      navigationFocusService.navigationEndEvents
-        .pipe(
-          map(e => e.urlAfterRedirects),
-          startWith(''),
-          pairwise(),
-        )
-        .subscribe(([fromUrl, toUrl]) => {
-          // We want to reset the scroll position on navigation except when navigating within
-          // the documentation for a single component.
-          if (!navigationFocusService.isNavigationWithinComponentView(fromUrl, toUrl)) {
-            resetScrollPosition();
-          }
-          analytics.locationChanged(toUrl);
-        }),
-    );
+    navigationFocusService.navigationEndEvents
+      .pipe(
+        map(e => e.urlAfterRedirects),
+        startWith(''),
+        pairwise(),
+        takeUntilDestroyed(),
+      )
+      .subscribe(([fromUrl, toUrl]) => {
+        // We want to reset the scroll position on navigation except when navigating within
+        // the documentation for a single component.
+        if (!navigationFocusService.isNavigationWithinComponentView(fromUrl, toUrl)) {
+          resetScrollPosition();
+        }
+        analytics.locationChanged(toUrl);
+      });
 
     router.events
       .pipe(
@@ -62,10 +60,6 @@ export class MaterialDocsApp implements OnDestroy {
       .subscribe(url => {
         this._updateCanonicalLink(url);
       });
-  }
-
-  ngOnDestroy() {
-    this._subscriptions.unsubscribe();
   }
 
   private _updateCanonicalLink(absoluteUrl: string) {

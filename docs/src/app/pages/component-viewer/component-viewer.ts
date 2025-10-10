@@ -12,7 +12,6 @@ import {
   ChangeDetectorRef,
   Component,
   Directive,
-  OnDestroy,
   OnInit,
   ViewEncapsulation,
   viewChild,
@@ -20,16 +19,16 @@ import {
   inject,
 } from '@angular/core';
 import {ActivatedRoute, Router, RouterLinkActive, RouterLink, RouterOutlet} from '@angular/router';
-import {combineLatest, Observable, ReplaySubject, Subject} from 'rxjs';
-import {map, skip, switchMap, takeUntil} from 'rxjs/operators';
+import {combineLatest, Observable, ReplaySubject} from 'rxjs';
+import {map, skip, switchMap} from 'rxjs/operators';
 import {DocItem, DocumentationItems} from '../../shared/documentation-items/documentation-items';
 import {TableOfContents} from '../../shared/table-of-contents/table-of-contents';
-
 import {ComponentPageTitle} from '../page-title/page-title';
 import {NavigationFocus} from '../../shared/navigation-focus/navigation-focus';
 import {DocViewer} from '../../shared/doc-viewer/doc-viewer';
 import {ExampleViewer} from '../../shared/example-viewer/example-viewer';
 import {MatTabLink, MatTabNav, MatTabNavPanel} from '@angular/material/tabs';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-component-viewer',
@@ -46,14 +45,13 @@ import {MatTabLink, MatTabNav, MatTabNavPanel} from '@angular/material/tabs';
     RouterOutlet,
   ],
 })
-export class ComponentViewer implements OnDestroy {
+export class ComponentViewer {
   private _router = inject(Router);
   componentPageTitle = inject(ComponentPageTitle);
   readonly docItems = inject(DocumentationItems);
 
   componentDocItem = new ReplaySubject<DocItem>(1);
   sections: Set<string> = new Set(['overview', 'api']);
-  private _destroyed = new Subject<void>();
 
   constructor() {
     const route = inject(ActivatedRoute);
@@ -74,7 +72,7 @@ export class ComponentViewer implements OnDestroy {
           const doc = await docItems.getItemById(id, section);
           return {doc, section};
         }),
-        takeUntil(this._destroyed),
+        takeUntilDestroyed(),
       )
       .subscribe(({doc, section}) => {
         if (!doc) {
@@ -98,11 +96,6 @@ export class ComponentViewer implements OnDestroy {
         }
       });
   }
-
-  ngOnDestroy(): void {
-    this._destroyed.next();
-    this._destroyed.complete();
-  }
 }
 
 /**
@@ -111,7 +104,7 @@ export class ComponentViewer implements OnDestroy {
  * the table of contents headers.
  */
 @Directive()
-export class ComponentBaseView implements OnInit, OnDestroy {
+export class ComponentBaseView implements OnInit {
   componentViewer = inject(ComponentViewer);
   private _changeDetectorRef = inject(ChangeDetectorRef);
 
@@ -119,7 +112,6 @@ export class ComponentBaseView implements OnInit, OnDestroy {
   readonly viewers = viewChildren(DocViewer);
 
   showToc: Observable<boolean>;
-  private _destroyed = new Subject<void>();
 
   constructor() {
     const breakpointObserver = inject(BreakpointObserver);
@@ -133,25 +125,20 @@ export class ComponentBaseView implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.componentViewer.componentDocItem.pipe(takeUntil(this._destroyed)).subscribe(() => {
+    this.componentViewer.componentDocItem.pipe(takeUntilDestroyed()).subscribe(() => {
       const tableOfContents = this.tableOfContents();
       if (tableOfContents) {
         tableOfContents.resetHeaders();
       }
     });
 
-    this.showToc.pipe(skip(1), takeUntil(this._destroyed)).subscribe(() => {
+    this.showToc.pipe(skip(1), takeUntilDestroyed()).subscribe(() => {
       if (this.tableOfContents()) {
         this.viewers().forEach(viewer => {
           viewer.contentRendered.emit(viewer._elementRef.nativeElement);
         });
       }
     });
-  }
-
-  ngOnDestroy() {
-    this._destroyed.next();
-    this._destroyed.complete();
   }
 
   updateTableOfContents(sectionName: string, docViewerContent: HTMLElement, sectionIndex = 0) {
