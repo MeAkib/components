@@ -10,7 +10,6 @@ import {FocusKeyManager, FocusableOption} from '@angular/cdk/a11y';
 import {Direction, Directionality} from '@angular/cdk/bidi';
 import {ENTER, SPACE, hasModifierKey} from '@angular/cdk/keycodes';
 import {SharedResizeObserver} from '@angular/cdk/observers/private';
-import {Platform} from '@angular/cdk/platform';
 import {ViewportRuler} from '@angular/cdk/scrolling';
 import {
   AfterContentChecked,
@@ -89,7 +88,6 @@ export abstract class MatPaginatedTabHeader
   private _viewportRuler = inject(ViewportRuler);
   private _dir = inject(Directionality, {optional: true});
   private _ngZone = inject(NgZone);
-  private _platform = inject(Platform);
   private _sharedResizeObserver = inject(SharedResizeObserver);
   private _injector = inject(Injector);
   private _renderer = inject(Renderer2);
@@ -460,14 +458,6 @@ export abstract class MatPaginatedTabHeader
     // We round the `transform` here, because transforms with sub-pixel precision cause some
     // browsers to blur the content of the element.
     this._tabList.nativeElement.style.transform = `translateX(${Math.round(translateX)}px)`;
-
-    // Setting the `transform` on IE will change the scroll offset of the parent, causing the
-    // position to be thrown off in some cases. We have to reset it ourselves to ensure that
-    // it doesn't get thrown off. Note that we scope it only to IE and Edge, because messing
-    // with the scroll position throws off Chrome 71+ in RTL mode (see #14689).
-    if (this._platform.TRIDENT || this._platform.EDGE) {
-      this._tabListContainer.nativeElement.scrollLeft = 0;
-    }
   }
 
   /** Sets the distance in pixels that the tab header should be transformed in the X-axis. */
