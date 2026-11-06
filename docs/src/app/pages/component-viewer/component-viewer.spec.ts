@@ -10,7 +10,7 @@ import {
 } from '@angular/router';
 import {RouterTestingHarness} from '@angular/router/testing';
 import {Observable} from 'rxjs';
-import {filter, skip, take} from 'rxjs/operators';
+import {filter, take} from 'rxjs/operators';
 import {ComponentViewer} from './component-viewer';
 import {docItemResolver} from './doc-item-resolver';
 import {ComponentPageTitle} from '../page-title/page-title';
@@ -88,7 +88,7 @@ describe('ComponentViewer', () => {
 
   it('should load the doc item for the route params', async () => {
     const component = await navigate('/components/button');
-    const doc = await firstValueFrom(component.componentDocItem);
+    const doc = component.docItem();
 
     expect(doc.id).toBe('button');
     expect(doc.packageName).toBe('material');
@@ -97,13 +97,12 @@ describe('ComponentViewer', () => {
 
   it('should load the new doc item when the route params change', async () => {
     const component = await navigate('/components/button');
-    await firstValueFrom(component.componentDocItem);
+    expect(component.docItem().id).toBe('button');
 
-    const nextDoc = firstValueFrom(component.componentDocItem.pipe(skip(1)));
     const reused = await navigate('/components/checkbox');
 
     expect(reused).toBe(component);
-    expect((await nextDoc).id).toBe('checkbox');
+    expect(component.docItem().id).toBe('checkbox');
   });
 
   it('should redirect to the section if the doc item does not exist', async () => {

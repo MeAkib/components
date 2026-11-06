@@ -20,9 +20,8 @@ import {
   viewChildren,
   inject,
 } from '@angular/core';
-import {toObservable, toSignal} from '@angular/core/rxjs-interop';
+import {toSignal} from '@angular/core/rxjs-interop';
 import {RouterLinkActive, RouterLink, RouterOutlet} from '@angular/router';
-import {Observable} from 'rxjs';
 import {map} from 'rxjs/operators';
 import {DocItem} from '../../shared/documentation-items/documentation-items';
 import {TableOfContents} from '../../shared/table-of-contents/table-of-contents';
@@ -53,8 +52,6 @@ export class ComponentViewer {
 
   /** Doc item to display. Bound from the route's resolved `docItem`. */
   readonly docItem = input.required<DocItem>();
-
-  readonly componentDocItem: Observable<DocItem> = toObservable(this.docItem);
 
   /** Tabs shown for the doc item. */
   readonly sections = computed(() => {
